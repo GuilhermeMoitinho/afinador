@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Afinador de Violão
 
-## Getting Started
+Afinador online de violão com detecção de pitch em tempo real direto no navegador. Implementa o algoritmo **MPM (McLeod Pitch Method)** dentro de um `AudioWorklet` para precisão sub-cent e baixa latência.
 
-First, run the development server:
+## Recursos
+
+- 8 afinações: Padrão, Drop D, Drop C, Open G, Open D, DADGAD, meio tom abaixo e um tom abaixo
+- Modo **Auto** (detecta a corda mais próxima) e **Manual** (trava em uma corda específica)
+- Calibração de A4 entre 415 Hz e 466 Hz
+- Indicador in-tune ±5 cents (verde com glow), ±15 cents (amarelo) e além disso (vermelho)
+- Roda em qualquer navegador moderno em HTTPS ou localhost (Web Audio API + AudioWorklet)
+
+## Stack
+
+- Next.js 16 + React 19 + TypeScript estrito
+- Tailwind CSS 4
+- Web Audio API: `AudioWorklet` + `BiquadFilterNode` (high-pass 70 Hz)
+- Algoritmo MPM com NSDF acelerada por FFT (Cooley-Tukey radix-2 in-place)
+- Suavização na main thread: `median(5)` + EMA (alpha = 0.25)
+
+## Como rodar
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra `http://localhost:3000` e libere o microfone.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Como funciona
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Captura do microfone via `getUserMedia` sem AGC, supressão de ruído ou cancelamento de eco — queremos sinal cru.
+2. Filtro biquad high-pass a 70 Hz para cortar hum de 50/60 Hz e rumble de manuseio sem atingir o E2 (82 Hz).
+3. `AudioWorklet` acumula uma janela de 4096 samples com hop de 2048 (~46 ms de atualização).
+4. NSDF calculada via FFT, threshold de clarity 0.93 para evitar octave errors, e interpolação parabólica para precisão sub-amostra.
+5. Mediana de 5 leituras + EMA na main thread estabilizam a agulha sem perder responsividade.
 
-## Learn More
+## Build
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+npm run start
+```
